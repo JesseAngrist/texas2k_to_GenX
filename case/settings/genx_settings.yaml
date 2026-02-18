@@ -1,0 +1,31 @@
+UCommit: 0 # no unit commitment
+OperationalReserves: 0 # no operational reserves
+StorageLosses: 1 # accounts for storage losses in policies
+TimeDomainReduction: 0 # no time domain reduction
+VirtualChargeDischargeCost: 2 # USD $2/MWh virtual discharge cost 
+StorageVirtualDischarge: 1 # storage can contribute to capacity margin without discharging
+LDSAdditionalConstraints: 0 # no additional constraints on LDS
+
+ParameterScale: 1 # scale parameters for numerical stability\
+MultiStage: 0 # single-stage model
+ModelingToGenerateAlternatives: 0 # do not use MGA
+MethodofMorris: 0 # do not use Method of Morris
+
+CO2Cap: 0 # no CO2 cap
+EnergyShareRequirement: 0 # no renewable energy share requirement
+CapacityReserveMargin: 0 # no capacity reserve margin
+MinCapReq: 0 # no minimum capacity requirement for specific technologies
+MaxCapReq: 0 # no maximum capacity requirement for specific technologies
+
+NetworkExpansion: 0 # no network expansion 
+DC_OPF: 1 # use DC optimal power flow - this automatically disables network expansion, even if it was enabled on the previous line, see:
+# https://github.com/GenXProject/GenX.jl/blob/main/src/load_inputs/load_network_data.jl lines 39-43
+Trans_Loss_Segments: 1 # linearized transmission losses with 1 segment
+
+WriteOutputs: "full" # write full outputs with hourly resolution
+OutputFullTimeSeries: 1 # output full time series data in hourly resolution
+
+Solver: "Gurobi" # use Gurobi by default - must be licensed by user. HiGHS settings also included
+EnableJuMPDirectModel: 1 # enable JuMP direct model for solvers that support it, improving performance
+EnableJuMPStringNames: 1 # enable JuMP string names for performance
+
