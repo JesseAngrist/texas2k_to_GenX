@@ -13,7 +13,7 @@ MethodofMorris: 0 # do not use Method of Morris
 
 CO2Cap: 0 # no CO2 cap
 EnergyShareRequirement: 0 # no renewable energy share requirement
-CapacityReserveMargin: 0 # no capacity reserve margin
+CapacityReserveMargin: 1 # no capacity reserve margin
 MinCapReq: 0 # no minimum capacity requirement for specific technologies
 MaxCapReq: 0 # no maximum capacity requirement for specific technologies
 

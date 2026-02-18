@@ -153,6 +153,9 @@ function write_generators(
     vre_codes = ["WND", "SUN"]
     vre_gens  = filter(row -> row.FuelCode in vre_codes, gens_df)
 
+    # All buses that carry any generator – used for greenfield expansion nodes
+    all_gen_buses = unique(gens_df[!, "Number of Bus"])
+
     # ---------------------------------------------------------------
     # Build Thermal.csv
     # ---------------------------------------------------------------
@@ -244,7 +247,7 @@ function write_generators(
             Resource                 = name,
             Zone                     = node,
             Model                    = 2,       # economic dispatch (no unit commitment per settings)
-            New_Build                = (code == "DFO") ? 0 : 1,
+            New_Build                = 0,
             Can_Retire               = 0,
             Existing_Cap_MW          = round(max_mw, digits=2),
             Max_Cap_MW               = -1,
@@ -262,9 +265,44 @@ function write_generators(
         ))
     end
 
+    # Greenfield thermal nodes – one entry per technology per bus,
+    # Existing_Cap_MW = 0 so GenX can build new capacity anywhere.
+    gf_thermal = [
+        ("NG_CT",   NG_CT_HR_CENTRAL,   NG_CT_CAPEX,   NG_CT_FOM,   NG_CT_VOM,   NG_CT_MIN_POWER,   NG_CT_RAMP,   "TX_NG"),
+        ("NG_CCGT", NG_CCGT_HR_CENTRAL, NG_CCGT_CAPEX, NG_CCGT_FOM, NG_CCGT_VOM, NG_CCGT_MIN_POWER, NG_CCGT_RAMP, "TX_NG"),
+        ("COAL",    COAL_HR_CENTRAL,    COAL_CAPEX,    COAL_FOM,    COAL_VOM,    COAL_MIN_POWER,    COAL_RAMP,    "TX_coal"),
+        ("NUC",     NUC_HR_CENTRAL,     NUC_CAPEX,     NUC_FOM,     NUC_VOM,     NUC_MIN_POWER,     NUC_RAMP,     "Nuclear"),
+    ]
+    for bus_num in all_gen_buses
+        !haskey(bus_node_bij, bus_num) && continue
+        node = bus_node_bij[bus_num]
+        for (tech, hr, capex, fom, vom, min_pwr, ramp, fuel) in gf_thermal
+            push!(thermal_rows, (
+                Resource                = "$(tech)_$(bus_num)_GF",
+                Zone                    = node,
+                Model                   = 2,
+                New_Build               = 1,
+                Can_Retire              = 0,
+                Existing_Cap_MW         = 0.0,
+                Max_Cap_MW              = -1,
+                Min_Cap_MW              = -1,
+                Inv_Cost_per_MWyr       = capex,
+                Fixed_OM_Cost_per_MWyr  = fom,
+                Var_OM_Cost_per_MWh     = vom,
+                Heat_Rate_MMBTU_per_MWh = round(hr, digits=3),
+                Fuel                    = fuel,
+                Min_Power               = min_pwr,
+                Ramp_Up_Percentage      = ramp,
+                Ramp_Dn_Percentage      = ramp,
+                region                  = "TX",
+                cluster                 = 1,
+            ))
+        end
+    end
+
     thermal_df = DataFrame(thermal_rows)
     CSV.write(joinpath(resources_out, "Thermal.csv"), thermal_df)
-    println("Thermal.csv written: $(nrow(thermal_df)) generators")
+    println("Thermal.csv written: $(nrow(thermal_df)) generators ($(nrow(thermal_df) - length(all_gen_buses)*4) existing + $(length(all_gen_buses)*4) greenfield)")
 
     # ---------------------------------------------------------------
     # Build VRE.csv
@@ -290,7 +328,7 @@ function write_generators(
             Resource               = name,
             Zone                   = node,
             Num_VRE_Bins           = 1,
-            New_Build              = 1,
+            New_Build              = 0,
             Can_Retire             = 0,
             Existing_Cap_MW        = round(max_mw, digits=2),
             Max_Cap_MW             = -1,
@@ -303,9 +341,36 @@ function write_generators(
         ))
     end
 
+    # Greenfield VRE nodes
+    gf_vre = [
+        ("WND", WIND_CAPEX,  WIND_FOM,  WIND_VOM),
+        ("SUN", SOLAR_CAPEX, SOLAR_FOM, SOLAR_VOM),
+    ]
+    for bus_num in all_gen_buses
+        !haskey(bus_node_bij, bus_num) && continue
+        node = bus_node_bij[bus_num]
+        for (fuel, capex, fom, vom) in gf_vre
+            push!(vre_rows, (
+                Resource               = "$(fuel)_$(bus_num)_GF",
+                Zone                   = node,
+                Num_VRE_Bins           = 1,
+                New_Build              = 1,
+                Can_Retire             = 0,
+                Existing_Cap_MW        = 0.0,
+                Max_Cap_MW             = -1,
+                Min_Cap_MW             = -1,
+                Inv_Cost_per_MWyr      = capex,
+                Fixed_OM_Cost_per_MWyr = fom,
+                Var_OM_Cost_per_MWh    = vom,
+                region                 = "TX",
+                cluster                = 1,
+            ))
+        end
+    end
+
     vre_df = DataFrame(vre_rows)
     CSV.write(joinpath(resources_out, "VRE.csv"), vre_df)
-    println("VRE.csv written: $(nrow(vre_df)) generators")
+    println("VRE.csv written: $(nrow(vre_df)) generators ($(nrow(vre_df) - length(all_gen_buses)*2) existing + $(length(all_gen_buses)*2) greenfield)")
 
     # ---------------------------------------------------------------
     # Build Storage.csv
@@ -325,7 +390,7 @@ function write_generators(
             Resource                     = name,
             Zone                         = node,
             Model                        = 1,     # symmetric charge/discharge
-            New_Build                    = 1,
+            New_Build                    = 0,
             Can_Retire                   = 0,
             Existing_Cap_MW              = round(max_mw, digits=2),
             Existing_Cap_MWh             = round(max_mw * BATT_HOURS_ASSUMED, digits=2),
@@ -349,9 +414,41 @@ function write_generators(
         ))
     end
 
+    # Greenfield storage nodes
+    for bus_num in all_gen_buses
+        !haskey(bus_node_bij, bus_num) && continue
+        node = bus_node_bij[bus_num]
+        push!(storage_rows, (
+            Resource                = "BESS_$(bus_num)_GF",
+            Zone                    = node,
+            Model                   = 1,
+            New_Build               = 1,
+            Can_Retire              = 0,
+            Existing_Cap_MW         = 0.0,
+            Existing_Cap_MWh        = 0.0,
+            Max_Cap_MW              = -1,
+            Max_Cap_MWh             = -1,
+            Min_Cap_MW              = -1,
+            Min_Cap_MWh             = -1,
+            Inv_Cost_per_MWyr       = BATT_CAPEX_MW,
+            Inv_Cost_per_MWhyr      = BATT_CAPEX_MWH,
+            Fixed_OM_Cost_per_MWyr  = BATT_FOM_MW,
+            Fixed_OM_Cost_per_MWhyr = BATT_FOM_MWH,
+            Var_OM_Cost_per_MWh     = BATT_VOM,
+            Var_OM_Cost_per_MWh_In  = BATT_VOM_IN,
+            Self_Disch              = BATT_SELF_DISCH,
+            Eff_Up                  = BATT_EFF,
+            Eff_Down                = BATT_EFF,
+            Min_Duration            = BATT_MIN_DURATION,
+            Max_Duration            = BATT_MAX_DURATION,
+            region                  = "TX",
+            cluster                 = 1,
+        ))
+    end
+
     storage_df = DataFrame(storage_rows)
     CSV.write(joinpath(resources_out, "Storage.csv"), storage_df)
-    println("Storage.csv written: $(nrow(storage_df)) units")
+    println("Storage.csv written: $(nrow(storage_df)) units ($(nrow(storage_df) - length(all_gen_buses)) existing + $(length(all_gen_buses)) greenfield)")
 
     # ---------------------------------------------------------------
     # Build Hydro.csv
