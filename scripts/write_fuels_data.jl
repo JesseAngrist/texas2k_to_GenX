@@ -2,7 +2,9 @@ using CSV
 using DataFrames
 
 function write_fuels_dataCSV()
-    fuels_data_path = joinpath(@__DIR__, "..", "case", "inputs", "system", "Fuels_data.csv")
+    fuels_data_path = joinpath(@__DIR__, "..", "case", "system", "Fuels_data.csv")
+    master_path = joinpath(@__DIR__, "..", "ERCOT_Load", "master.csv")
+    n_timesteps = nrow(CSV.read(master_path, DataFrame))
     
     fuels_df = DataFrame(Time_index = Integer[], TX_NG = Float64[], TX_coal = Float64[], TX_oil = Float64[], Nuclear = Float64[])
 
@@ -24,7 +26,7 @@ function write_fuels_dataCSV()
     # Nuclear fuel (enriched uranium): ~$0.71/MMBtu equivalent (EIA AEO 2025 reference)
     NUCLEAR_PRICE_USDperMMBtu = 0.71
 
-    for i in 1:8760
+    for i in 1:n_timesteps
         priceRow = (i, NG_PRICE_USDperMMBtu, COAL_PRICE_USD_perMMBtu, OIL_PRICE_USD_perMMBtu, NUCLEAR_PRICE_USDperMMBtu)
         push!(fuels_df, priceRow)
     end

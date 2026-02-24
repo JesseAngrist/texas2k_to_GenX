@@ -25,7 +25,7 @@ Trans_Loss_Segments: 1 # linearized transmission losses with 1 segment
 WriteOutputs: "full" # write full outputs with hourly resolution
 OutputFullTimeSeries: 1 # output full time series data in hourly resolution
 
-Solver: "Gurobi" # use Gurobi by default - must be licensed by user. HiGHS settings also included
+Solver: "gurobi" # use Gurobi by default - must be licensed by user. HiGHS settings also included
 EnableJuMPDirectModel: 1 # enable JuMP direct model for solvers that support it, improving performance
 EnableJuMPStringNames: 1 # enable JuMP string names for performance
 
